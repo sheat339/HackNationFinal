@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indeks Branż API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .result {
+            margin-top: 20px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .sector-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 5px solid #667eea;
+        }
+        .sector-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .sector-card-title {
+            flex: 1;
+        }
+        .sector-card-title h3 {
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 5px;
+        }
+        .sector-card-title .pkd-code {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .sector-card-category {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .category-excellent {
+            background: #d4edda;
+            color: #155724;
+        }
+        .category-good {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .category-average {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .category-poor {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .category-very-poor {
+            background: #f5c6cb;
+            color: #721c24;
+        }
+        .sector-card-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .sector-metric {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .sector-metric-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .sector-metric-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .sector-metric-score {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-left: 8px;
+        }
+        .score-high {
+            background: #d4edda;
+            color: #155724;
+        }
+        .score-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .score-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .sectors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+        .endpoints {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .endpoint-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        .endpoint-card h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+        .endpoint-card code {
+            background: white;
+            padding: 5px 8px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.show {
+            display: block;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .index-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 25px;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Indeks Branż API</h1>
+            <p>System analizy kondycji sektorów polskiej gospodarki</p>
+        </div>
+
+        <div class="card">
+            <h2>Wyszukaj sektor po kodzie PKD</h2>
+            <form id="sectorForm">
+                <div class="form-group">
+                    <label for="pkdCode">Kod PKD:</label>
+                    <input type="text" id="pkdCode" placeholder="np. 62" required>
+                </div>
+                <button type="submit" class="btn">Pobierz dane</button>
+            </form>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Ładowanie danych...</p>
+            </div>
+            <div class="result" id="result"></div>
+            <div class="error" id="error"></div>
+        </div>
+
+        <div class="card">
+            <h2>Rankingi</h2>
+            <form id="rankingsForm">
+                <div class="form-group">
+                    <label for="topN">Liczba wyników:</label>
+                    <input type="number" id="topN" value="10" min="1" max="50">
+                </div>
+                <div class="form-group">
+                    <label for="sortBy">Sortuj według:</label>
+                    <select id="sortBy">
+                        <option value="final_index">Indeks końcowy</option>
+                        <option value="growth_score">Wzrost</option>
+                        <option value="risk_score">Ryzyko</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Pobierz ranking</button>
+            </form>
+            <div class="loading" id="loadingRankings">
+                <div class="spinner"></div>
+                <p>Ładowanie rankingu...</p>
+            </div>
+            <div class="result" id="resultRankings"></div>
+            <div class="error" id="errorRankings"></div>
+        </div>
+
+        <div class="card">
+            <h2>Lista sektorów</h2>
+            <form id="sectorsForm">
+                <div class="form-group">
+                    <label for="limit">Limit wyników:</label>
+                    <input type="number" id="limit" value="20" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="category">Kategoria (opcjonalnie):</label>
+                    <select id="category">
+                        <option value="">Wszystkie</option>
+                        <option value="Bardzo dobra kondycja">Bardzo dobra kondycja</option>
+                        <option value="Dobra kondycja">Dobra kondycja</option>
+                        <option value="Średnia kondycja">Średnia kondycja</option>
+                        <option value="Słaba kondycja">Słaba kondycja</option>
+                        <option value="Bardzo słaba kondycja">Bardzo słaba kondycja</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Pobierz listę</button>
+            </form>
+            <div class="loading" id="loadingSectors">
+                <div class="spinner"></div>
+                <p>Ładowanie listy...</p>
+            </div>
+            <div class="result" id="resultSectors"></div>
+            <div class="error" id="errorSectors"></div>
+        </div>
+
+        <div class="card">
+            <h2>Dostępne endpointy API</h2>
+            <div class="endpoints">
+                <div class="endpoint-card">
+                    <h4>GET /health</h4>
+                    <p>Sprawdzenie stanu serwisu</p>
+                    <code>/health</code>
+                </div>
+                <div class="endpoint-card">
+                    <h4>GET /sectors</h4>
+                    <p>Lista wszystkich sektorów</p>
+                    <code>/sectors?limit=10&category=...</code>
+                </div>
+                <div class="endpoint-card">
+                    <h4>GET /sector/{pkd}</h4>
+                    <p>Szczegóły sektora</p>
+                    <code>/sector/62</code>
+                </div>
+                <div class="endpoint-card">
+                    <h4>GET /rankings</h4>
+                    <p>Ranking sektorów</p>
+                    <code>/rankings?top_n=10&sort_by=...</code>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <a href="/docs" target="_blank" class="btn" style="text-decoration: none; display: inline-block; text-align: center;">📚 Dokumentacja Swagger</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchData(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || `HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        function getCategoryClass(category) {
+            const classes = {
+                'Bardzo dobra kondycja': 'category-excellent',
+                'Dobra kondycja': 'category-good',
+                'Średnia kondycja': 'category-average',
+                'Słaba kondycja': 'category-poor',
+                'Bardzo słaba kondycja': 'category-very-poor'
+            };
+            return classes[category] || 'category-average';
+        }
+
+        function getScoreClass(score) {
+            if (score >= 0.7) return 'score-high';
+            if (score >= 0.4) return 'score-medium';
+            return 'score-low';
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return 'N/A';
+            if (typeof num === 'number') {
+                if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+                if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+                return num.toFixed(2);
+            }
+            return num;
+        }
+
+        function formatPercent(num) {
+            if (num === null || num === undefined) return 'N/A';
+            return (num * 100).toFixed(2) + '%';
+        }
+
+        function createSectorCard(sector) {
+            const card = document.createElement('div');
+            card.className = 'sector-card';
+            
+            const categoryClass = getCategoryClass(sector.category || 'Średnia kondycja');
+            
+            card.innerHTML = `
+                <div class="sector-card-header">
+                    <div class="sector-card-title">
+                        <div class="index-badge">Indeks: ${(sector.final_index || 0).toFixed(3)}</div>
+                        <h3>${sector.branch_name || 'Nieznana branża'}</h3>
+                        <div class="pkd-code">Kod PKD: ${sector.pkd_code}</div>
+                    </div>
+                    <div class="sector-card-category ${categoryClass}">
+                        ${sector.category || 'Brak kategorii'}
+                    </div>
+                </div>
+                <div class="sector-card-body">
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Wielkość</div>
+                        <div class="sector-metric-value">
+                            ${(sector.size_score || 0).toFixed(3)}
+                            <span class="sector-metric-score ${getScoreClass(sector.size_score || 0)}">
+                                ${formatPercent(sector.size_score || 0)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Rozwój</div>
+                        <div class="sector-metric-value">
+                            ${(sector.growth_score || 0).toFixed(3)}
+                            <span class="sector-metric-score ${getScoreClass(sector.growth_score || 0)}">
+                                ${formatPercent(sector.growth_score || 0)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Rentowność</div>
+                        <div class="sector-metric-value">
+                            ${(sector.profitability_score || 0).toFixed(3)}
+                            <span class="sector-metric-score ${getScoreClass(sector.profitability_score || 0)}">
+                                ${formatPercent(sector.profitability_score || 0)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Zadłużenie</div>
+                        <div class="sector-metric-value">
+                            ${(sector.debt_score || 0).toFixed(3)}
+                            <span class="sector-metric-score ${getScoreClass(sector.debt_score || 0)}">
+                                ${formatPercent(sector.debt_score || 0)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Ryzyko</div>
+                        <div class="sector-metric-value">
+                            ${(sector.risk_score || 0).toFixed(3)}
+                            <span class="sector-metric-score ${getScoreClass(sector.risk_score || 0)}">
+                                ${formatPercent(sector.risk_score || 0)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Wzrost przychodów (YoY)</div>
+                        <div class="sector-metric-value">${formatPercent(sector.revenue_growth_yoy)}</div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Wzrost zysku (YoY)</div>
+                        <div class="sector-metric-value">${formatPercent(sector.profit_growth_yoy)}</div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Marża zysku</div>
+                        <div class="sector-metric-value">${formatPercent(sector.profit_margin)}</div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Zadłużenie do aktywów</div>
+                        <div class="sector-metric-value">${formatPercent(sector.debt_to_assets)}</div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Wskaźnik upadłości</div>
+                        <div class="sector-metric-value">${formatPercent(sector.bankruptcy_rate)}</div>
+                    </div>
+                    <div class="sector-metric">
+                        <div class="sector-metric-label">Liczba przedsiębiorstw</div>
+                        <div class="sector-metric-value">${formatNumber(sector.num_companies)}</div>
+                    </div>
+                    ${sector.rank ? `<div class="sector-metric">
+                        <div class="sector-metric-label">Ranking</div>
+                        <div class="sector-metric-value">#${sector.rank}</div>
+                    </div>` : ''}
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function showSectorCard(containerId, sector) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            container.appendChild(createSectorCard(sector));
+            container.classList.add('show');
+        }
+
+        function showSectorsGrid(containerId, sectors) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            if (!sectors || sectors.length === 0) {
+                container.innerHTML = '<p>Brak wyników</p>';
+                container.classList.add('show');
+                return;
+            }
+            
+            const grid = document.createElement('div');
+            grid.className = 'sectors-grid';
+            
+            sectors.forEach(sector => {
+                grid.appendChild(createSectorCard(sector));
+            });
+            
+            container.appendChild(grid);
+            container.classList.add('show');
+        }
+
+        function showError(elementId, message) {
+            const errorEl = document.getElementById(elementId);
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        function hideError(elementId) {
+            document.getElementById(elementId).classList.remove('show');
+        }
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).classList.add('show');
+        }
+
+        function hideLoading(elementId) {
+            document.getElementById(elementId).classList.remove('show');
+        }
+
+        document.getElementById('sectorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pkdCode = document.getElementById('pkdCode').value.trim();
+            const resultEl = document.getElementById('result');
+            const errorEl = document.getElementById('error');
+
+            resultEl.classList.remove('show');
+            hideError('error');
+            showLoading('loading');
+
+            try {
+                const data = await fetchData(`/sector/${pkdCode}`);
+                hideLoading('loading');
+                showSectorCard('result', data);
+            } catch (error) {
+                hideLoading('loading');
+                showError('error', `Błąd: ${error.message}`);
+            }
+        });
+
+        document.getElementById('rankingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const topN = document.getElementById('topN').value;
+            const sortBy = document.getElementById('sortBy').value;
+            const resultEl = document.getElementById('resultRankings');
+            const errorEl = document.getElementById('errorRankings');
+
+            resultEl.classList.remove('show');
+            hideError('errorRankings');
+            showLoading('loadingRankings');
+
+            try {
+                const data = await fetchData(`/rankings?top_n=${topN}&sort_by=${sortBy}`);
+                hideLoading('loadingRankings');
+                showSectorsGrid('resultRankings', data);
+            } catch (error) {
+                hideLoading('loadingRankings');
+                showError('errorRankings', `Błąd: ${error.message}`);
+            }
+        });
+
+        document.getElementById('sectorsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const limit = document.getElementById('limit').value;
+            const category = document.getElementById('category').value;
+            const resultEl = document.getElementById('resultSectors');
+            const errorEl = document.getElementById('errorSectors');
+
+            resultEl.classList.remove('show');
+            hideError('errorSectors');
+            showLoading('loadingSectors');
+
+            try {
+                let url = `/sectors?limit=${limit}`;
+                if (category) {
+                    url += `&category=${encodeURIComponent(category)}`;
+                }
+                const data = await fetchData(url);
+                hideLoading('loadingSectors');
+                showSectorsGrid('resultSectors', data);
+            } catch (error) {
+                hideLoading('loadingSectors');
+                showError('errorSectors', `Błąd: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html>

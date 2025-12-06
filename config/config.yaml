@@ -1,0 +1,58 @@
+# Konfiguracja projektu Indeks Branż
+
+# Definicja poziomu analizy PKD
+pkd_level: "division"  # division, group, class
+pkd_year: 2007  # 2007 lub 2025 - wybór klasyfikacji
+
+# Wagi komponentów indeksu
+weights:
+  size: 0.20          # Wielkość branży
+  growth: 0.25        # Rozwój branży
+  profitability: 0.20 # Rentowność
+  debt: 0.15          # Zadłużenie
+  risk: 0.20          # Ryzyko
+
+# Okres analizy
+analysis_period:
+  start_year: 2021
+  end_year: 2024
+  forecast_months: 12  # Perspektywa 12 miesięcy
+
+# Źródła danych
+data_sources:
+  gus:
+    enabled: true
+    base_url: "https://stat.gov.pl"
+  
+  krs:
+    enabled: true
+    base_url: "https://ekrs.ms.gov.pl"
+  
+  gpw:
+    enabled: true
+    base_url: "https://www.gpw.pl"
+  
+  nbp:
+    enabled: true
+    base_url: "https://api.nbp.pl"
+
+# Klasyfikacja wyników
+classification:
+  categories:
+    - name: "Bardzo dobra kondycja"
+      min_score: 0.75
+    - name: "Dobra kondycja"
+      min_score: 0.60
+    - name: "Średnia kondycja"
+      min_score: 0.45
+    - name: "Słaba kondycja"
+      min_score: 0.30
+    - name: "Bardzo słaba kondycja"
+      min_score: 0.0
+
+# Wizualizacje
+visualization:
+  output_format: ["html", "png"]
+  theme: "plotly_white"
+  width: 1200
+  height: 800
