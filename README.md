@@ -604,7 +604,8 @@ System wykorzystuje cache do optymalizacji wydajności:
 
 ## Autorzy
 
-Zespół HackNation
+Zespół HackNation "Mocniejsi":
+Yaroslav Khaitov i Kamil Brzeziński
 
 ## Licencja
 
