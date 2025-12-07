@@ -4,7 +4,6 @@ PKD/NACE code mapping and sector definitions.
 
 from typing import Dict
 
-# PKD 2007 divisions mapping (2-digit level)
 PKD_DIVISIONS_2007: Dict[str, str] = {
     "01": "Uprawy rolne, chów i hodowla zwierząt, łowiectwo, włączając działalność usługową",
     "02": "Leśnictwo i pozyskiwanie drewna",

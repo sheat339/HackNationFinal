@@ -1,173 +1,228 @@
-"""
-Główny skrypt uruchomieniowy dla Indeksu Branż
-"""
-
-import pandas as pd
-import numpy as np
-from pathlib import Path
 import sys
+import argparse
+from pathlib import Path
 
-# Dodaj ścieżkę src do PYTHONPATH
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from src.utils.config_loader import load_config
-from src.utils.pkd_mapping import get_all_divisions, get_pkd_division_name
-from src.data_collection.data_collector import DataCollector
-from src.analysis.indicators import IndicatorCalculator
-from src.analysis.classifier import SectorClassifier
+from src.utils.logger import setup_logger
+from src.utils.pkd_mapping import get_all_divisions
+from src.services.data_service import DataService
+from src.services.analysis_service import AnalysisService
+from src.services.export_service import ExportService
 from src.visualization.charts import Visualizer
+from src.utils.exceptions import IndeksBranzError
 
-def main():
-    """Główna funkcja uruchomieniowa"""
-    print("=" * 60)
-    print("Indeks Branż - Analiza kondycji sektorów polskiej gospodarki")
-    print("=" * 60)
+
+def run_analysis(logger) -> dict:
+    logger.info("=" * 60)
+    logger.info("Indeks Branż - Analiza kondycji sektorów polskiej gospodarki")
+    logger.info("=" * 60)
     
-    # Ładowanie konfiguracji
-    print("\n[1/6] Ładowanie konfiguracji...")
+    logger.info("[1/7] Ładowanie konfiguracji...")
     config = load_config()
+    logger.info("Konfiguracja załadowana pomyślnie")
     
-    # Przygotowanie katalogów
-    print("\n[2/6] Przygotowanie struktury katalogów...")
+    logger.info("[2/7] Przygotowywanie struktury katalogów...")
     data_dir = Path("data")
     data_dir.mkdir(exist_ok=True)
     (data_dir / "raw").mkdir(exist_ok=True)
     (data_dir / "processed").mkdir(exist_ok=True)
     (data_dir / "output").mkdir(exist_ok=True)
+    Path("logs").mkdir(exist_ok=True)
+    Path("visualizations").mkdir(exist_ok=True)
     
-    # Wybór branż do analizy (przykładowe działy PKD)
-    print("\n[3/6] Wybór branż do analizy...")
-    all_divisions = get_all_divisions()
+    logger.info("[3/7] Wybór sektorów do analizy...")
+    from src.data_collection.database_loader import DatabaseLoader
+    loader = DatabaseLoader()
+    available_pkd = loader.get_available_pkd_codes()
     
-    # Wybieramy przykładowe branże do analizy
-    selected_pkd_codes = [
-        "10",  # Produkcja żywności
-        "20",  # Produkcja chemikaliów
-        "25",  # Produkcja wyrobów metalowych
-        "26",  # Produkcja komputerów i elektroniki
-        "28",  # Produkcja pojazdów samochodowych
-        "36",  # Budownictwo
-        "46",  # Handel hurtowy
-        "47",  # Handel detaliczny
-        "49",  # Transport lądowy
-        "55",  # Zakwaterowanie
-        "61",  # Telekomunikacja
-        "62",  # Działalność związana z oprogramowaniem
-        "64",  # Działalność usługowa w zakresie pośrednictwa finansowego
-        "68",  # Obrót nieruchomościami
-        "86"   # Opieka zdrowotna
-    ]
+    if available_pkd:
+        selected_pkd_codes = sorted(list(available_pkd))
+        logger.info(f"Znaleziono {len(selected_pkd_codes)} sektorów w bazie danych: {selected_pkd_codes}")
+    else:
+        logger.warning("Nie znaleziono żadnych kodów PKD w bazie danych, używam domyślnych")
+        selected_pkd_codes = [
+            "10", "20", "25", "26", "28", "36", "46", "47", "49", "55", "61", "62", "64", "68", "86"
+        ]
+    logger.info(f"Wybrano {len(selected_pkd_codes)} sektorów do analizy")
     
-    print(f"Wybrano {len(selected_pkd_codes)} branż do analizy")
+    data_service = DataService(config)
+    analysis_service = AnalysisService(config)
+    export_service = ExportService(config, data_dir / "output")
     
-    # Zbieranie danych
-    print("\n[4/6] Zbieranie danych...")
-    collector = DataCollector(config)
-    sector_data = collector.collect_all_data(selected_pkd_codes)
+    logger.info("[4/7] Zbieranie danych...")
+    sector_data = data_service.collect_sector_data(selected_pkd_codes)
     
-    # Obliczanie wskaźników
-    print("\n[5/6] Obliczanie wskaźników i indeksu...")
-    calculator = IndicatorCalculator(config)
-    indicators_df = calculator.calculate_all_indicators(sector_data)
+    logger.info("[5/7] Obliczanie wskaźników i indeksu...")
+    indicators_df = analysis_service.calculate_indicators(sector_data)
     
-    # Klasyfikacja branż
-    classifier = SectorClassifier(config)
-    indicators_df = classifier.classify_sectors(indicators_df)
+    classified_df = analysis_service.classify_sectors(indicators_df)
     
-    # Dodanie nazw branż
-    indicators_df['branch_name'] = indicators_df['pkd_code'].apply(get_pkd_division_name)
+    results_df = analysis_service.prepare_final_results(classified_df)
     
-    # Sortowanie według indeksu
-    indicators_df = indicators_df.sort_values('final_index', ascending=False)
+    top_10 = analysis_service.get_top_sectors(results_df, 10)
+    growing = analysis_service.get_growing_sectors(results_df, 10)
+    risky = analysis_service.get_risky_sectors(results_df, 10)
     
-    # Dodanie rankingu
-    indicators_df['rank'] = range(1, len(indicators_df) + 1)
+    logger.info("[6/7] Eksportowanie wyników...")
+    export_paths = export_service.export_results(
+        results_df,
+        top_10_df=top_10,
+        growing_df=growing,
+        risky_df=risky
+    )
+    logger.info(f"Wyniki wyeksportowane do: {export_paths['csv']}, {export_paths['excel']}")
     
-    # Reorganizacja kolumn
-    column_order = [
-        'rank', 'pkd_code', 'branch_name', 'final_index', 'category',
-        'size_score', 'growth_score', 'profitability_score', 'debt_score', 'risk_score',
-        'revenue_growth_yoy', 'profit_growth_yoy', 'profit_margin',
-        'debt_to_assets', 'bankruptcy_rate', 'num_companies'
-    ]
-    indicators_df = indicators_df[[col for col in column_order if col in indicators_df.columns]]
-    
-    # Zapis wyników
-    print("\n[6/6] Zapis wyników...")
-    
-    # CSV
-    csv_path = data_dir / "output" / "indeks_branz.csv"
-    indicators_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
-    print(f"✓ Zapisano CSV: {csv_path}")
-    
-    # Excel
-    excel_path = data_dir / "output" / "indeks_branz.xlsx"
-    with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-        indicators_df.to_excel(writer, sheet_name='Indeks Branż', index=False)
-        
-        # Dodatkowy arkusz z top 10
-        top_10 = indicators_df.head(10)
-        top_10.to_excel(writer, sheet_name='Top 10', index=False)
-        
-        # Arkusz z najszybciej rozwijającymi się
-        growing = classifier.get_growing_sectors(indicators_df, 10)
-        growing.to_excel(writer, sheet_name='Najszybciej rozwijające się', index=False)
-        
-        # Arkusz z najbardziej ryzykownymi
-        risky = classifier.get_risky_sectors(indicators_df, 10)
-        risky.to_excel(writer, sheet_name='Najbardziej ryzykowne', index=False)
-    
-    print(f"✓ Zapisano Excel: {excel_path}")
-    
-    # Tworzenie wizualizacji
-    print("\n[7/7] Tworzenie wizualizacji...")
+    logger.info("[7/7] Tworzenie wizualizacji...")
     visualizer = Visualizer(config)
     
-    # Ranking
-    fig_ranking = visualizer.create_index_ranking(indicators_df, top_n=20)
+    fig_ranking = visualizer.create_index_ranking(results_df, top_n=20)
     visualizer.save_figure(fig_ranking, 'ranking_indeksu', 'html')
     
-    # Porównanie wzrostu
-    fig_growth = visualizer.create_growth_comparison(indicators_df, top_n=15)
+    fig_growth = visualizer.create_growth_comparison(results_df, top_n=15)
     visualizer.save_figure(fig_growth, 'porownanie_wzrostu', 'html')
     
-    # Rozkład kategorii
-    fig_categories = visualizer.create_category_distribution(indicators_df)
+    fig_categories = visualizer.create_category_distribution(results_df)
     visualizer.save_figure(fig_categories, 'rozkład_kategorii', 'html')
     
-    # Mapa korelacji
-    fig_corr = visualizer.create_correlation_heatmap(indicators_df)
+    fig_corr = visualizer.create_correlation_heatmap(results_df)
     visualizer.save_figure(fig_corr, 'korelacja_wskaźników', 'html')
     
-    # Wykres radarowy dla top 3 branż
-    for i, pkd_code in enumerate(indicators_df.head(3)['pkd_code']):
-        fig_radar = visualizer.create_radar_chart(indicators_df, pkd_code)
+    for pkd_code in results_df.head(3)['pkd_code']:
+        fig_radar = visualizer.create_radar_chart(results_df, pkd_code)
         visualizer.save_figure(fig_radar, f'radar_{pkd_code}', 'html')
     
-    # Podsumowanie
-    print("\n" + "=" * 60)
-    print("PODSUMOWANIE")
-    print("=" * 60)
-    print(f"\nPrzeanalizowano {len(indicators_df)} branż")
-    print(f"\nTop 5 branż według indeksu:")
-    for idx, row in indicators_df.head(5).iterrows():
-        print(f"  {row['rank']}. {row['pkd_code']} - {row['branch_name'][:50]}")
-        print(f"     Indeks: {row['final_index']:.3f} | Kategoria: {row['category']}")
+    logger.info("=" * 60)
+    logger.info("PODSUMOWANIE")
+    logger.info("=" * 60)
+    logger.info(f"Przeanalizowano {len(results_df)} sektorów")
+    logger.info("\nTop 5 sektorów według indeksu:")
+    for _, row in results_df.head(5).iterrows():
+        logger.info(
+            f"  {row['rank']}. {row['pkd_code']} - {row['branch_name'][:50]}"
+        )
+        logger.info(
+            f"     Indeks: {row['final_index']:.3f} | Kategoria: {row['category']}"
+        )
     
-    print(f"\n\nRozkład kategorii:")
-    category_counts = indicators_df['category'].value_counts()
+    category_counts = results_df['category'].value_counts()
+    logger.info("\nRozkład kategorii:")
     for category, count in category_counts.items():
-        print(f"  {category}: {count}")
+        logger.info(f"  {category}: {count}")
     
-    print(f"\n\nPliki wygenerowane:")
-    print(f"  - {csv_path}")
-    print(f"  - {excel_path}")
-    print(f"  - Wizualizacje w folderze: visualizations/")
+    logger.info("\nWygenerowane pliki:")
+    logger.info(f"  - {export_paths['csv']}")
+    logger.info(f"  - {export_paths['excel']}")
+    logger.info(f"  - Wizualizacje w folderze: visualizations/")
     
-    print("\n" + "=" * 60)
-    print("Zakończono pomyślnie!")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Analiza zakończona pomyślnie!")
+    logger.info("=" * 60)
+    
+    return export_paths
+
+
+def run_api_server(logger, host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
+    try:
+        import uvicorn
+        
+        logger.info("=" * 60)
+        logger.info("Uruchamianie serwera FastAPI...")
+        logger.info(f"Serwer będzie dostępny pod adresem: http://{host}:{port}")
+        logger.info(f"Swagger UI: http://{host}:{port}/docs")
+        logger.info(f"ReDoc: http://{host}:{port}/redoc")
+        logger.info("=" * 60)
+        logger.info("Naciśnij CTRL+C aby zatrzymać serwer")
+        logger.info("=" * 60)
+        
+        uvicorn.run(
+            "src.api.main:app",
+            host=host,
+            port=port,
+            reload=reload,
+            log_level="info"
+        )
+    except ImportError:
+        logger.error("uvicorn nie zainstalowany. Uruchom: pip install uvicorn[standard]")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("\nSerwer zatrzymany przez użytkownika")
+    except Exception as e:
+        logger.error(f"Błąd uruchamiania serwera API: {e}")
+        sys.exit(1)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Indeks Branż - Analiza indeksu sektorów",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Przykłady:
+  python main.py --mode analysis
+  python main.py --mode api
+  python main.py --mode both
+  python main.py --mode api --port 8080
+        """
+    )
+    
+    parser.add_argument(
+        "--mode",
+        choices=["analysis", "api", "both"],
+        default="both",
+        help="Tryb uruchomienia: analysis (tylko analiza), api (tylko serwer), both (analiza + serwer). Domyślnie: both"
+    )
+    
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Host dla serwera API (domyślnie: 0.0.0.0)"
+    )
+    
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port dla serwera API (domyślnie: 8000)"
+    )
+    
+    parser.add_argument(
+        "--no-reload",
+        action="store_true",
+        help="Wyłącz auto-reload dla serwera API"
+    )
+    
+    args = parser.parse_args()
+    
+    log_file = Path("logs") / "indeks_branz.log"
+    logger = setup_logger(log_file=log_file)
+    
+    try:
+        if args.mode in ["analysis", "both"]:
+            export_paths = run_analysis(logger)
+            
+            if args.mode == "analysis":
+                return
+        
+        if args.mode in ["api", "both"]:
+            run_api_server(
+                logger,
+                host=args.host,
+                port=args.port,
+                reload=not args.no_reload
+            )
+        
+    except IndeksBranzError as e:
+        logger.error(f"Błąd aplikacji: {e}")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("\nPrzerwane przez użytkownika")
+        sys.exit(0)
+    except Exception as e:
+        logger.exception(f"Nieoczekiwany błąd: {e}")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
-

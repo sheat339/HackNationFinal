@@ -27,10 +27,8 @@ def setup_logger(
     logger = logging.getLogger(name)
     logger.setLevel(level)
     
-    # Remove existing handlers
     logger.handlers.clear()
     
-    # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(level)
     console_format = logging.Formatter(
@@ -40,7 +38,6 @@ def setup_logger(
     console_handler.setFormatter(console_format)
     logger.addHandler(console_handler)
     
-    # File handler (if specified)
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(log_file, encoding="utf-8")

@@ -47,6 +47,7 @@ class AnalysisService:
         logger.info("Przygotowywanie wyników końcowych")
         
         indicators_df = indicators_df.copy()
+        
         indicators_df['branch_name'] = indicators_df['pkd_code'].apply(get_pkd_division_name)
         indicators_df = indicators_df.sort_values('final_index', ascending=False)
         indicators_df['rank'] = range(1, len(indicators_df) + 1)
@@ -62,6 +63,7 @@ class AnalysisService:
         indicators_df = indicators_df[available_columns]
         
         logger.info(f"Wyniki końcowe przygotowane dla {len(indicators_df)} sektorów")
+        logger.info(f"Rozkład kategorii: {indicators_df['category'].value_counts().to_dict()}")
         return indicators_df
     
     def get_top_sectors(self, results_df: pd.DataFrame, n: int = 10) -> pd.DataFrame:

@@ -43,7 +43,6 @@ def sample_config():
 
 @pytest.fixture
 def sample_sector_data():
-    """Create sample sector data for tests."""
     return pd.DataFrame({
         "pkd_code": ["62", "62"],
         "year": [2023, 2024],
@@ -57,21 +56,17 @@ def sample_sector_data():
 
 
 class TestDataService:
-    """Tests for DataService."""
     
     def test_data_service_initialization(self, sample_config):
-        """Test DataService initialization."""
         service = DataService(sample_config)
         assert service.config == sample_config
         assert service.collector is not None
     
     def test_validate_sector_data(self, sample_config, sample_sector_data):
-        """Test sector data validation."""
         service = DataService(sample_config)
         assert service.validate_sector_data(sample_sector_data) is True
     
     def test_validate_sector_data_missing_columns(self, sample_config):
-        """Test validation with missing columns."""
         service = DataService(sample_config)
         invalid_data = pd.DataFrame({"pkd_code": ["62"], "year": [2024]})
         
@@ -80,35 +75,29 @@ class TestDataService:
 
 
 class TestExportService:
-    """Tests for ExportService."""
     
     def test_export_service_initialization(self, sample_config, tmp_path):
-        """Test ExportService initialization."""
         service = ExportService(sample_config, tmp_path)
         assert service.output_dir == tmp_path
         assert tmp_path.exists()
     
     def test_export_to_csv(self, sample_config, sample_sector_data, tmp_path):
-        """Test CSV export."""
         service = ExportService(sample_config, tmp_path)
         filepath = service.export_to_csv(sample_sector_data, "test.csv")
         
         assert filepath.exists()
         assert filepath.suffix == ".csv"
         
-        # Verify content
         loaded = pd.read_csv(filepath)
         assert len(loaded) == len(sample_sector_data)
     
     def test_export_to_excel(self, sample_config, sample_sector_data, tmp_path):
-        """Test Excel export."""
         service = ExportService(sample_config, tmp_path)
         filepath = service.export_to_excel(sample_sector_data, "test.xlsx")
         
         assert filepath.exists()
         assert filepath.suffix == ".xlsx"
         
-        # Verify content
         loaded = pd.read_excel(filepath)
         assert len(loaded) == len(sample_sector_data)
 

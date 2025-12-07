@@ -39,12 +39,10 @@ class Visualizer:
     
     def create_index_ranking(self, indicators_df: pd.DataFrame, top_n: int = 20) -> go.Figure:
         """Tworzy wykres rankingu indeksu branż"""
-        # Sortuj według indeksu
         df_sorted = indicators_df.sort_values('final_index', ascending=True).tail(top_n)
         
         fig = go.Figure()
         
-        # Kolorowanie według kategorii
         colors = {
             'Bardzo dobra kondycja': '#2ecc71',
             'Dobra kondycja': '#3498db',

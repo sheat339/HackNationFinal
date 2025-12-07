@@ -1,7 +1,3 @@
-"""
-Configuration loading utilities.
-"""
-
 import yaml
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -14,18 +10,6 @@ logger = get_logger(__name__)
 
 
 def load_config(config_path: Optional[Path] = None) -> Config:
-    """
-    Load configuration from YAML file.
-    
-    Args:
-        config_path: Optional path to config file. If None, uses default path.
-        
-    Returns:
-        Config object with loaded configuration
-        
-    Raises:
-        ConfigurationError: If config file cannot be loaded or is invalid
-    """
     if config_path is None:
         config_path = Path(__file__).parent.parent.parent / "config" / "config.yaml"
     
@@ -39,7 +23,6 @@ def load_config(config_path: Optional[Path] = None) -> Config:
         
         config = Config.from_dict(config_dict)
         
-        # Validate weights
         if not config.weights.validate():
             logger.warning("Weights do not sum to 1.0, but continuing...")
         
@@ -61,15 +44,6 @@ def load_config(config_path: Optional[Path] = None) -> Config:
 
 
 def get_weights_dict(config: Config) -> Dict[str, float]:
-    """
-    Get weights dictionary from config.
-    
-    Args:
-        config: Config object
-        
-    Returns:
-        Dictionary with weight values
-    """
     return {
         "size": config.weights.size,
         "growth": config.weights.growth,
@@ -77,4 +51,3 @@ def get_weights_dict(config: Config) -> Dict[str, float]:
         "debt": config.weights.debt,
         "risk": config.weights.risk,
     }
-

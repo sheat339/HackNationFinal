@@ -1,15 +1,9 @@
-"""
-Configuration models.
-"""
-
 from dataclasses import dataclass
 from typing import List, Optional
 
 
 @dataclass
 class Weights:
-    """Weights for index components."""
-    
     size: float = 0.20
     growth: float = 0.25
     profitability: float = 0.20
@@ -17,15 +11,12 @@ class Weights:
     risk: float = 0.20
     
     def validate(self) -> bool:
-        """Validate that weights sum to 1.0."""
         total = self.size + self.growth + self.profitability + self.debt + self.risk
         return abs(total - 1.0) < 0.01
 
 
 @dataclass
 class AnalysisPeriod:
-    """Analysis period configuration."""
-    
     start_year: int = 2021
     end_year: int = 2024
     forecast_months: int = 12
@@ -33,16 +24,12 @@ class AnalysisPeriod:
 
 @dataclass
 class DataSource:
-    """Data source configuration."""
-    
     enabled: bool = True
     base_url: str = ""
 
 
 @dataclass
 class DataSources:
-    """All data sources configuration."""
-    
     gus: DataSource
     krs: DataSource
     gpw: DataSource
@@ -51,44 +38,57 @@ class DataSources:
 
 @dataclass
 class Category:
-    """Classification category."""
-    
     name: str
     min_score: float
 
 
 @dataclass
 class Classification:
-    """Classification configuration."""
-    
     categories: List[Category]
 
 
 @dataclass
 class Visualization:
-    """Visualization configuration."""
-    
     output_format: List[str]
-    theme: str = "plotly_white"
-    width: int = 1200
-    height: int = 800
+    theme: str
+    width: int
+    height: int
 
 
 @dataclass
 class Config:
-    """Main configuration model."""
-    
-    weights: Weights
-    analysis_period: AnalysisPeriod
-    data_sources: DataSources
-    classification: Classification
-    visualization: Visualization
     pkd_level: str = "division"
     pkd_year: int = 2007
+    weights: Weights = None
+    analysis_period: AnalysisPeriod = None
+    data_sources: DataSources = None
+    classification: Classification = None
+    visualization: Visualization = None
+    
+    def __post_init__(self):
+        if self.weights is None:
+            self.weights = Weights()
+        if self.analysis_period is None:
+            self.analysis_period = AnalysisPeriod()
+        if self.data_sources is None:
+            self.data_sources = DataSources(
+                gus=DataSource(),
+                krs=DataSource(),
+                gpw=DataSource(),
+                nbp=DataSource()
+            )
+        if self.classification is None:
+            self.classification = Classification(categories=[])
+        if self.visualization is None:
+            self.visualization = Visualization(
+                output_format=["html", "png"],
+                theme="plotly_white",
+                width=1200,
+                height=800
+            )
     
     @classmethod
     def from_dict(cls, data: dict) -> "Config":
-        """Create Config from dictionary."""
         weights = Weights(**data.get("weights", {}))
         analysis_period = AnalysisPeriod(**data.get("analysis_period", {}))
         
@@ -117,4 +117,3 @@ class Config:
             classification=classification,
             visualization=visualization,
         )
-
